@@ -1,0 +1,14 @@
+lelab-omx
+Copyright 2026 채병기
+
+This product includes software from LeLab, developed by Hugging Face Inc.
+and LeLab contributors:
+https://github.com/huggingface/leLab
+
+The application base and Robotis OMX-AI/bimanual integration were imported
+from the first-stage repository at commit 6fc977e:
+https://github.com/orocapangyo/leLab
+
+LeLab source files are provided under the Apache License, Version 2.0.
+Existing copyright, attribution, and license notices in imported files have
+been retained.
