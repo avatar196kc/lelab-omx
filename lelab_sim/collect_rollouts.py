@@ -112,7 +112,18 @@ def validate_out_dir(out_path_str: str) -> Path:
 
 
 def get_joint_order_indices(robot_joint_names: list[str], target_order: list[str]) -> list[int]:
-    """로봇 관절 이름 리스트에서 target_order에 해당하는 인덱스 매핑을 생성합니다."""
+    """로봇 관절 이름 리스트에서 target_order에 해당하는 인덱스 매핑을 생성합니다.
+
+    Args:
+        robot_joint_names: Isaac Lab 로봇 객체(Articulation)의 관절명 리스트.
+        target_order: 표준 정렬 순서 리스트 (예: JOINT_ORDER).
+
+    Returns:
+        target_order의 각 관절에 매핑되는 robot_joint_names 내의 인덱스 리스트.
+
+    Raises:
+        ValueError: target_order에 포함된 관절이 robot_joint_names(또는 alias)에 존재하지 않는 경우.
+    """
     name_alias = {
         "left_joint1": "left_shoulder_pan",
         "left_joint2": "left_shoulder_lift",
@@ -135,7 +146,11 @@ def get_joint_order_indices(robot_joint_names: list[str], target_order: list[str
         elif target in robot_joint_names:
             indices.append(robot_joint_names.index(target))
         else:
-            indices.append(len(indices))
+            raise ValueError(
+                f"Target joint '{target}' not found in robot joint names: {robot_joint_names} "
+                f"(resolved alias names: {mapped_names}). "
+                "Please ensure the URDF / USD joint naming matches the expected OMX convention."
+            )
     return indices
 
 
@@ -381,26 +396,26 @@ def main() -> None:
 
     with torch.inference_mode():
         while simulation_app.is_running() and num_saved < args_cli.num_episodes:
-            # 1) 정책 추론 및 액션 스텝
-            actions = policy(obs)
-            obs, _, dones, _ = wrapped_env.step(actions)
-
-            # 2) 상태, 액션, 카메라 이미지 추출
+            # 1) 현재(pre-step) 상태, 물체 위치, 엔드이펙터 위치 및 카메라 프레임 캡처
             joint_pos_all = robot.data.joint_pos[:, joint_indices].detach().cpu().numpy()
             obj_pos_all = object_asset.data.root_pos_w[:, :3].detach().cpu().numpy()
             ee_pos_all = robot.data.body_pos_w.detach().cpu().numpy()
 
-            # 관절 목표 위치 (액션 절대 목표: q_current + 0.05 * action)
-            action_deltas = actions.detach().cpu().numpy()
-            target_joint_pos_all = joint_pos_all + 0.05 * action_deltas
-
-            # 카메라 프레임 수집
+            # 카메라 프레임 수집 (pre-step 관측 시점)
             cam_frames: dict[str, np.ndarray] = {}
             for cam in CAMERAS:
                 cam_sensor = unwrapped_scene[f"{cam}_cam"]
                 cam_frames[cam] = cam_sensor.data.output["rgb"].detach().cpu().numpy()
 
-            # 3) 각 환경별 스텝 기록 및 종료 평가
+            # 2) 정책 추론 및 절대 목표 액션 계산 (q_current + 0.05 * action)
+            actions = policy(obs)
+            action_deltas = actions.detach().cpu().numpy()
+            target_joint_pos_all = joint_pos_all + 0.05 * action_deltas
+
+            # 3) 환경 스텝 진행 (내부적으로 done 시 자동 reset 처리됨)
+            obs, _, dones, _ = wrapped_env.step(actions)
+
+            # 4) 각 환경별 스텝 기록 및 에피소드 종료/성공 평가
             for env_idx in range(args_cli.num_envs):
                 if num_saved >= args_cli.num_episodes:
                     break
@@ -463,7 +478,7 @@ def main() -> None:
                             f"(Progress: {num_saved}/{args_cli.num_episodes}, Success Rate: {success_rate:.1f}%)"
                         )
 
-                    # 환경 버퍼 리셋
+                    # 환경 버퍼 리셋 (done 이후 다음 에피소드를 위한 초기 물체 높이)
                     new_obj_z = float(object_asset.data.root_pos_w[env_idx, 2].detach().cpu().item())
                     env_buffers[env_idx].reset(new_obj_z)
 

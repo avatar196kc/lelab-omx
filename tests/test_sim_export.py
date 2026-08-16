@@ -138,3 +138,37 @@ def test_invalid_repo_id_raises(tmp_path: Path):
 
     with pytest.raises(ValueError, match="namespace/name"):
         export_raw_to_lerobot(raw_dir=tmp_path / "does_not_exist", repo_id="no_namespace", task="t")
+
+
+def test_get_joint_order_indices_mapping():
+    """collect_rollouts.py의 관절 순서 매핑 및 fail-fast 예외 검증."""
+    from lelab_sim.collect_rollouts import get_joint_order_indices
+
+    # 1. URDF 기본 이름 매핑 검증
+    urdf_names = [
+        "left_joint1",
+        "left_joint2",
+        "left_joint3",
+        "left_joint4",
+        "left_joint5",
+        "left_gripper_joint_1",
+        "right_joint1",
+        "right_joint2",
+        "right_joint3",
+        "right_joint4",
+        "right_joint5",
+        "right_gripper_joint_1",
+    ]
+    indices = get_joint_order_indices(urdf_names, list(JOINT_ORDER))
+    assert indices == list(range(12))
+
+    # 2. 순서가 뒤섞인 경우 올바른 인덱스 반환 검증
+    shuffled_names = list(reversed(urdf_names))
+    shuffled_indices = get_joint_order_indices(shuffled_names, list(JOINT_ORDER))
+    assert shuffled_indices == list(range(11, -1, -1))
+
+    # 3. 관절명 누락 시 fail-fast ValueError 발생 검증
+    incomplete_names = ["left_joint1", "left_joint2"]
+    with pytest.raises(ValueError, match="not found in robot joint names"):
+        get_joint_order_indices(incomplete_names, list(JOINT_ORDER))
+
