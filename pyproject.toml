@@ -117,3 +117,7 @@ follow_imports = "skip"
 [[tool.mypy.overrides]]
 module = "lelab.*"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "lelab_sim.*"
+ignore_errors = true
