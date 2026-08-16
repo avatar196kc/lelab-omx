@@ -100,18 +100,28 @@ class OmxBimanualLiftSceneCfg(InteractiveSceneCfg):
 # -----------------------------------------------------------------------------
 @configclass
 class ActionsCfg:
-    """12차원 액션: 12개 관절의 목표 위치 델타 (action_scale = 0.05 rad ≈ 2.9도/스텝)."""
+    """12차원 액션: 12개 관절의 상대 목표 위치 제어 (Relative Joint Position Action).
 
-    arm_action = mdp.JointPositionActionCfg(
+    Spec §4.2: q_target[t] = clip(q_target[t-1] + action * action_scale, q_min, q_max)
+    - 팔 관절 (좌/우 각 5개, 총 10개): scale = 0.05 rad (≈ 2.86 deg/step)
+    - 그리퍼 관절 (좌/우 각 1개, 총 2개): scale = 0.05 rad
+    """
+
+    arm_action = mdp.RelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=[
             "left_joint[1-5]",
-            "left_gripper_joint_1",
             "right_joint[1-5]",
+        ],
+        scale=0.05,
+    )
+    gripper_action = mdp.RelativeJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=[
+            "left_gripper_joint_1",
             "right_gripper_joint_1",
         ],
         scale=0.05,
-        use_default_offset=True,
     )
 
 

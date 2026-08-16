@@ -371,6 +371,24 @@ def main() -> None:
     # 관절 순서 매핑 인덱스 생성
     joint_indices = get_joint_order_indices(robot.data.joint_names, JOINT_ORDER)
 
+    # 정책 액션 -> JOINT_ORDER 매핑 인덱스 생성
+    # (ActionsCfg: arm_action [left 1-5, right 1-5] + gripper_action [left_gripper, right_gripper])
+    action_joint_names = [
+        "left_joint1",
+        "left_joint2",
+        "left_joint3",
+        "left_joint4",
+        "left_joint5",
+        "right_joint1",
+        "right_joint2",
+        "right_joint3",
+        "right_joint4",
+        "right_joint5",
+        "left_gripper_joint_1",
+        "right_gripper_joint_1",
+    ]
+    action_indices = get_joint_order_indices(action_joint_names, list(JOINT_ORDER))
+
     # 양손 엔드이펙터 링크 인덱스 탐색
     body_names = list(robot.data.body_names)
     left_ee_idx = body_names.index("left_link5") if "left_link5" in body_names else 0
@@ -407,10 +425,15 @@ def main() -> None:
                 cam_sensor = unwrapped_scene[f"{cam}_cam"]
                 cam_frames[cam] = cam_sensor.data.output["rgb"].detach().cpu().numpy()
 
-            # 2) 정책 추론 및 절대 목표 액션 계산 (q_current + 0.05 * action)
+            # 2) 정책 추론 및 상대 델타 기반 절대 목표 관절 각도 계산 (Spec §4.2: q_target = clip(q + 0.05 * action, q_min, q_max))
             actions = policy(obs)
             action_deltas = actions.detach().cpu().numpy()
-            target_joint_pos_all = joint_pos_all + 0.05 * action_deltas
+            action_deltas_ordered = action_deltas[:, action_indices]
+            target_joint_pos_all = np.clip(
+                joint_pos_all + 0.05 * action_deltas_ordered,
+                q_min_arr,
+                q_max_arr,
+            )
 
             # 3) 환경 스텝 진행 (내부적으로 done 시 자동 reset 처리됨)
             obs, _, dones, _ = wrapped_env.step(actions)
