@@ -119,36 +119,32 @@ def export_raw_to_lerobot(
             raw_states = npz_data["states"]
             raw_actions = npz_data["actions"]
 
+        if len(raw_states) != len(raw_actions):
+            raise ValueError(
+                f"states and actions length mismatch in {ep_dir}: {len(raw_states)} vs {len(raw_actions)}"
+            )
+
         num_frames = len(raw_states)
         states_pct = rad_to_omx_pct(raw_states)
         actions_pct = rad_to_omx_pct(raw_actions)
 
-        # 카메라 이미지 로드 (BGR -> RGB)
-        cam_images: dict[str, list[np.ndarray]] = {}
-        for cam in CAMERAS:
-            cam_dir = ep_dir / cam
-            imgs = []
-            for f_idx in range(num_frames):
-                img_path = cam_dir / f"{f_idx:06d}.png"
+        # 프레임 순차 추가 (메모리 최적화: 프레임별 스트리밍 로드)
+        for f_idx in range(num_frames):
+            frame_dict = {
+                "observation.state": states_pct[f_idx],
+                "action": actions_pct[f_idx],
+                "task": task,
+            }
+            for cam in CAMERAS:
+                img_path = ep_dir / cam / f"{f_idx:06d}.png"
                 if not img_path.exists():
                     raise FileNotFoundError(f"Missing camera frame: {img_path}")
                 img_bgr = cv2.imread(str(img_path))
                 if img_bgr is None:
                     raise ValueError(f"Failed to read image: {img_path}")
                 img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                imgs.append(img_rgb)
-            cam_images[cam] = imgs
+                frame_dict[f"observation.images.{cam}"] = img_rgb
 
-        # 프레임 순차 추가
-        for f_idx in range(num_frames):
-            frame_dict = {
-                "observation.state": states_pct[f_idx],
-                "action": actions_pct[f_idx],
-                "observation.images.left_top": cam_images["left_top"][f_idx],
-                "observation.images.left_wrist": cam_images["left_wrist"][f_idx],
-                "observation.images.right_wrist": cam_images["right_wrist"][f_idx],
-                "task": task,
-            }
             dataset.add_frame(frame_dict)
 
         dataset.save_episode()
