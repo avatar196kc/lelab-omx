@@ -331,6 +331,10 @@ def main() -> None:
 
     import lelab_sim.envs  # noqa: F401 - registers Isaac-Lift-Bimanual-OMX-v0
     from lelab_sim.agents.rsl_rl_ppo_cfg import OmxBimanualLiftPPORunnerCfg
+
+    # 파지 판정은 보상 항(`RewardsCfg.object_grasp`)과 **같은 함수**를 씁니다.
+    # 학습이 받는 신호와 데이터 채택 기준이 어긋나지 않도록 하는 것이 요점입니다.
+    from lelab_sim.envs.mdp import both_grippers_touching
     from lelab_sim.joint_limits import JOINT_LIMITS_RAD, JOINT_ORDER
 
     q_min_arr = np.array([JOINT_LIMITS_RAD[j][0] for j in JOINT_ORDER], dtype=np.float32)
@@ -380,6 +384,16 @@ def main() -> None:
                 "Make sure both '--enable_cameras' CLI flag and 'env_cfg.enable_cameras = True' are active."
             )
 
+    # 그리퍼 접촉 센서 fail-fast 검증 (O2) — 파지 판정의 유일한 근거이므로 없으면 중단
+    for contact_key in ("left_gripper_contact", "right_gripper_contact"):
+        if contact_key not in unwrapped_scene:
+            raise RuntimeError(
+                f"Contact sensor '{contact_key}' not found in scene. "
+                "Gripper contact is required for grasp evaluation."
+            )
+    left_contact_sensor = unwrapped_scene["left_gripper_contact"]
+    right_contact_sensor = unwrapped_scene["right_gripper_contact"]
+
     # 관절 순서 매핑 인덱스 생성
     joint_indices = get_joint_order_indices(robot.data.joint_names, JOINT_ORDER)
 
@@ -406,14 +420,13 @@ def main() -> None:
     if hasattr(env_cfg, "actions") and hasattr(env_cfg.actions, "arm_action"):
         action_scale = getattr(env_cfg.actions.arm_action, "scale", 0.05)
 
-    # 양손 엔드이펙터 링크 인덱스 탐색 (Fail-fast ValueError, O3 Fix)
+    # 양손 엔드이펙터 링크 존재 검증 (Fail-fast, O3).
+    # 파지 판정은 접촉 센서로 옮겼지만(O2), 이 두 링크는 여전히 관측(`ee_pose`)과
+    # 보상(`reaching_object`/`object_grasp`)이 참조하므로 이름 불일치를 조기에 잡는다.
     body_names = list(robot.data.body_names)
-    if "left_link5" not in body_names:
-        raise ValueError(f"Body 'left_link5' not found in robot body names: {body_names}")
-    if "right_link5" not in body_names:
-        raise ValueError(f"Body 'right_link5' not found in robot body names: {body_names}")
-    left_ee_idx = body_names.index("left_link5")
-    right_ee_idx = body_names.index("right_link5")
+    for ee_body in ("left_link5", "right_link5"):
+        if ee_body not in body_names:
+            raise ValueError(f"Body '{ee_body}' not found in robot body names: {body_names}")
 
     # 환경별 에피소드 버퍼 초기화
     initial_obj_z = object_asset.data.root_pos_w[:, 2].detach().cpu().numpy()
@@ -439,7 +452,14 @@ def main() -> None:
             # 1) 현재(pre-step) 상태, 물체 위치, 엔드이펙터 위치 및 카메라 프레임 캡처
             joint_pos_all = robot.data.joint_pos[:, joint_indices].detach().cpu().numpy()
             obj_pos_all = object_asset.data.root_pos_w[:, :3].detach().cpu().numpy()
-            ee_pos_all = robot.data.body_pos_w.detach().cpu().numpy()
+
+            # 양 그리퍼가 타겟 물체에 실제로 접촉했는지 (거리 근사 대체, O2)
+            grasped_all = (
+                both_grippers_touching(left_contact_sensor, right_contact_sensor)
+                .detach()
+                .cpu()
+                .numpy()
+            )
 
             # 카메라 프레임 수집 (pre-step 관측 시점)
             cam_frames: dict[str, np.ndarray] = {}
@@ -469,12 +489,8 @@ def main() -> None:
                 cur_action = target_joint_pos_all[env_idx]
                 cur_obj_pos = obj_pos_all[env_idx]
 
-                # 접촉/파지 판정: 양손 엔드이펙터와 물체 중심 간 거리
-                left_ee_pos = ee_pos_all[env_idx, left_ee_idx, :3]
-                right_ee_pos = ee_pos_all[env_idx, right_ee_idx, :3]
-                d_left = float(np.linalg.norm(left_ee_pos - cur_obj_pos))
-                d_right = float(np.linalg.norm(right_ee_pos - cur_obj_pos))
-                is_contact = (d_left <= 0.15) and (d_right <= 0.15)
+                # 파지 판정: 양 그리퍼의 실제 접촉력 (O2)
+                is_contact = bool(grasped_all[env_idx])
 
                 # 기계적 관절 한계 판정
                 limits_ok = bool(
@@ -494,9 +510,21 @@ def main() -> None:
                     limits_ok=limits_ok,
                 )
 
-                # 에피소드 종료 또는 최대 스텝 도달 시 성공 판정 및 저장 (O6 Fix)
-                is_timeout = len(env_buffers[env_idx].states) >= args_cli.max_steps_per_episode
-                if dones[env_idx] or is_timeout:
+                # 에피소드 종료 판정.
+                # `dones`만이 env가 실제로 리셋되었음을 뜻한다. `max_steps_per_episode`는
+                # env 종료가 어떤 이유로든 오지 않을 때를 대비한 안전 상한일 뿐이며, 이때의
+                # 궤적은 리셋 없이 잘린 조각이므로 성공 판정에 넣지 않고 버린다.
+                over_cap = len(env_buffers[env_idx].states) > args_cli.max_steps_per_episode
+                if not dones[env_idx] and over_cap:
+                    print(
+                        f"[DROP] env {env_idx}: exceeded --max_steps_per_episode "
+                        f"({args_cli.max_steps_per_episode}) without env termination; "
+                        "discarding partial trajectory."
+                    )
+                    env_buffers[env_idx].reset(float(cur_obj_pos[2]))
+                    continue
+
+                if dones[env_idx]:
                     total_attempts += 1
                     is_success, reason = env_buffers[env_idx].evaluate_success(
                         lift_height_threshold=args_cli.lift_height_threshold,

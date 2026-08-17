@@ -6,6 +6,7 @@ ManagerBasedRLEnvCfg 기반으로 태스크의 관측, 액션, 보상, 도메인
 from __future__ import annotations
 
 import isaaclab.sim as sim_utils
+import torch
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg, mdp
 from isaaclab.managers import (
@@ -22,12 +23,31 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg
 
+from lelab_sim.envs import mdp as omx_mdp
 from lelab_sim.envs.omx_cfg import (
+    LEFT_GRIPPER_CONTACT_CFG,
     LEFT_TOP_CAMERA_CFG,
     LEFT_WRIST_CAMERA_CFG,
     OMX_BIMANUAL_CFG,
+    RIGHT_GRIPPER_CONTACT_CFG,
     RIGHT_WRIST_CAMERA_CFG,
 )
+
+# 물체를 들어올릴 목표 위치 (환경 로컬 좌표). 관측의 목표 3차원과 리프트 보상의
+# target_height가 이 상수 하나에서 파생되도록 묶어 둔다.
+LIFT_TARGET_POS: tuple[float, float, float] = (0.35, 0.0, 0.60)
+
+
+def lift_target_pos(env) -> torch.Tensor:
+    """고정 목표 위치를 반환하는 관측 항 (3차원).
+
+    `UniformPoseCommandCfg`를 쓰면 (a) pos+quat 7차원이 되어 설계의 60차원이 깨지고,
+    (b) 명령이 `body_name` 프레임 기준이라 "고정 목표"가 팔을 따라 움직인다.
+    태스크의 목표는 상수이므로 커맨드 매니저를 쓰지 않고 상수를 그대로 관측에 넣는다.
+    """
+    return torch.tensor(LIFT_TARGET_POS, device=env.device, dtype=torch.float32).repeat(
+        env.num_envs, 1
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -93,6 +113,10 @@ class OmxBimanualLiftSceneCfg(InteractiveSceneCfg):
     left_wrist_cam: TiledCameraCfg | None = None
     right_wrist_cam: TiledCameraCfg | None = None
 
+    # 그리퍼 접촉 센서 (파지 판정 — 거리 근사 대체). 학습·수집 모두 항상 활성.
+    left_gripper_contact = LEFT_GRIPPER_CONTACT_CFG
+    right_gripper_contact = RIGHT_GRIPPER_CONTACT_CFG
+
 
 # -----------------------------------------------------------------------------
 # MDP: Actions Configuration
@@ -110,7 +134,6 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=["left_joint[1-5]", "right_joint[1-5]"],
         scale=0.05,
-        use_default_offset=False,
     )
 
     # 2. 좌/우 그리퍼 관절 델타 제어 (2개 관절)
@@ -118,7 +141,6 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=["left_gripper_joint_1", "right_gripper_joint_1"],
         scale=0.05,
-        use_default_offset=False,
     )
 
 
@@ -162,16 +184,19 @@ class ObservationsCfg:
                 )
             },
         )
-        # 4. 타겟 물체 포즈 (7: pos 3 + quat 4)
-        object_pose = ObservationTermCfg(
-            func=mdp.root_pose_w,
+        # 4. 타겟 물체 포즈 (7 = pos 3 + quat 4).
+        # Isaac Lab v2.3.2 에는 `mdp.root_pose_w`가 없어 두 항으로 나눈다
+        # (`root_pos_w`는 env 원점 기준, `root_quat_w`는 (w,x,y,z)).
+        object_pos = ObservationTermCfg(
+            func=mdp.root_pos_w,
             params={"asset_cfg": SceneEntityCfg("object")},
         )
-        # 5. 타겟 목표 위치 (3)
-        target_pos = ObservationTermCfg(
-            func=mdp.generated_commands,
-            params={"command_name": "lift_target"},
+        object_quat = ObservationTermCfg(
+            func=mdp.root_quat_w,
+            params={"asset_cfg": SceneEntityCfg("object")},
         )
+        # 5. 타겟 목표 위치 (3) — 고정 상수 (커맨드 매니저 미사용, 위 함수 주석 참조)
+        target_pos = ObservationTermCfg(func=lift_target_pos)
         # 6. 이전 액션 (12)
         actions = ObservationTermCfg(func=mdp.last_action)
 
@@ -224,6 +249,19 @@ class EventCfg:
         },
     )
 
+    # 3-b. 에피소드 리셋 시 로봇 관절 초기화 (+노이즈).
+    # ManagerBased 환경은 reset 모드 이벤트 없이 로봇을 복원하지 않으므로, 이 항이
+    # 없으면 다음 에피소드가 이전 에피소드의 종료 자세에서 시작한다.
+    reset_robot_joints = EventTermCfg(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "position_range": (-0.05, 0.05),
+            "velocity_range": (0.0, 0.0),
+        },
+    )
+
     # 4. 에피소드 리셋 시 물체 초기 위치 무작위화 (x: 0.30~0.40m, y: -0.05~0.05m)
     reset_object_position = EventTermCfg(
         func=mdp.reset_root_state_uniform,
@@ -256,33 +294,36 @@ class RewardsCfg:
     4. action_rate: 급격한 액션 변화 패널티 (가중치 -0.01)
     """
 
-    # 1. 도달 보상: 양손과 물체 간 거리 최소화
+    # 1. 도달 보상: 양손이 **모두** 물체에 접근해야 상승 (tanh 커널의 곱)
     reaching_object = RewardTermCfg(
-        func=mdp.object_ee_distance,
+        func=omx_mdp.bimanual_object_distance,
         weight=1.0,
         params={
+            "std": 0.1,
             "object_cfg": SceneEntityCfg("object"),
             "ee_cfg": SceneEntityCfg("robot", body_names=["left_link5", "right_link5"]),
         },
     )
 
-    # 2. 파지 보상: 양손과 물체 간 동시 접촉/근접
+    # 2. 파지 보상: 양 그리퍼 접촉 센서를 직접 읽음
+    # (collect_rollouts.py의 성공 판정과 같은 함수를 공유 -> 학습 신호와 데이터 채택 기준 일치)
     object_grasp = RewardTermCfg(
-        func=mdp.object_is_grasped,
+        func=omx_mdp.bimanual_object_grasped,
         weight=2.0,
         params={
-            "object_cfg": SceneEntityCfg("object"),
-            "ee_cfg": SceneEntityCfg("robot", body_names=["left_link5", "right_link5"]),
+            "left_sensor_name": "left_gripper_contact",
+            "right_sensor_name": "right_gripper_contact",
         },
     )
 
     # 3. 리프트 보상: 물체 높이 상승 (물체 초기 중심 0.45m 대비 0.55m 이상부터 보상)
     lifting_object = RewardTermCfg(
-        func=mdp.object_lift_height,
+        func=omx_mdp.object_lift_height,
         weight=5.0,
         params={
+            # 물체 초기 중심 0.45m + 성공 판정 임계 0.10m = 0.55m 부터 보상 시작
             "minimal_height": 0.55,
-            "target_height": 0.60,
+            "target_height": LIFT_TARGET_POS[2],
             "object_cfg": SceneEntityCfg("object"),
         },
     )
@@ -324,22 +365,12 @@ class TerminationsCfg:
 # -----------------------------------------------------------------------------
 @configclass
 class CommandsCfg:
-    """명령 생성기: 목표 물체 리프트 위치 (고정 높이 0.60m)."""
+    """커맨드 매니저 미사용 (항이 없는 빈 설정).
 
-    lift_target = mdp.UniformPoseCommandCfg(
-        asset_name="robot",
-        body_name="left_link5",
-        resampling_time_range=(1e9, 1e9),
-        debug_vis=False,
-        ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(0.35, 0.35),
-            pos_y=(0.0, 0.0),
-            pos_z=(0.60, 0.60),
-            roll=(0.0, 0.0),
-            pitch=(0.0, 0.0),
-            yaw=(0.0, 0.0),
-        ),
-    )
+    목표 위치는 상수이므로 `lift_target_pos` 관측 항이 직접 제공합니다. 이전에
+    쓰던 `UniformPoseCommandCfg`는 pos+quat 7차원을 반환해 관측이 64차원이 되고,
+    명령이 `body_name` 프레임 기준이라 목표가 왼팔을 따라 움직이는 문제가 있었습니다.
+    """
 
 
 # -----------------------------------------------------------------------------

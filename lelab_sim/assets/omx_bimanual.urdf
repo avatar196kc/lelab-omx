@@ -26,7 +26,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -35,7 +35,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -59,7 +59,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -68,7 +68,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -92,7 +92,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -101,7 +101,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -125,7 +125,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -134,7 +134,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -158,7 +158,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -167,7 +167,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -191,7 +191,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -200,7 +200,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -224,7 +224,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -233,7 +233,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -250,7 +250,7 @@
     <child link="left_link7" />
     <origin rpy="0 0 0" xyz="0.0295 -0.0108 0" />
     <axis xyz="0 0 1" />
-    <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8" />
+    <limit effort="1000" lower="-1.7450" upper="-0.0000" velocity="4.8" />
     <dynamics damping="0.1" />
     <mimic joint="left_gripper_joint_1" multiplier="-1" />
   </joint>
@@ -258,7 +258,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -267,7 +267,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -304,7 +304,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -313,7 +313,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_01_base.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -337,7 +337,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -346,7 +346,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_02_base_tilt_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -370,7 +370,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -379,7 +379,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_03_middle_verticle.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -403,7 +403,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -412,7 +412,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_04_middle_horizontal.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -436,7 +436,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -445,7 +445,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_05_tip.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -469,7 +469,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -478,7 +478,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_06_pan_Revised.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -502,7 +502,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -511,7 +511,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_07_gripper_motorized.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -528,7 +528,7 @@
     <child link="right_link7" />
     <origin rpy="0 0 0" xyz="0.0295 -0.0108 0" />
     <axis xyz="0 0 1" />
-    <limit effort="1000" lower="-6.283185307179586" upper="6.283185307179586" velocity="4.8" />
+    <limit effort="1000" lower="-1.7450" upper="-0.0000" velocity="4.8" />
     <dynamics damping="0.1" />
     <mimic joint="right_gripper_joint_1" multiplier="-1" />
   </joint>
@@ -536,7 +536,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />
@@ -545,7 +545,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://open_manipulator_description/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="../../frontend/public/omx-urdf/meshes/omx_f/follower_08_gripper_gear.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="grey">
         <color rgba="0.2 0.2 0.2 1" />

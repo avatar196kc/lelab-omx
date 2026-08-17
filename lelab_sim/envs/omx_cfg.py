@@ -12,7 +12,7 @@ from pathlib import Path
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg
-from isaaclab.sensors import TiledCameraCfg
+from isaaclab.sensors import ContactSensorCfg, TiledCameraCfg
 
 # -----------------------------------------------------------------------------
 # Tunable Constants (튜닝 대상 물리 및 솔버 파라미터)
@@ -188,3 +188,27 @@ RIGHT_WRIST_CAMERA_CFG = TiledCameraCfg(
     width=640,
     height=480,
 )
+
+# -----------------------------------------------------------------------------
+# Gripper Contact Sensors (파지 판정용)
+# -----------------------------------------------------------------------------
+# 그리퍼 패드는 link6 / link7 (둘 다 link5의 자식, gripper_joint_2는 mimic).
+# `filter_prim_paths_expr`로 타겟 물체만 걸러 `force_matrix_w`를 읽으면 "이 그리퍼가
+# 물체에 닿았는가"를 직접 판정할 수 있다 — 거리 근사보다 정확하며 낙하 중인 물체를
+# 파지로 오판하지 않는다. 위 spawn의 `activate_contact_sensors=True`가 전제 조건.
+LEFT_GRIPPER_CONTACT_CFG = ContactSensorCfg(
+    prim_path="{ENV_REGEX_NS}/Robot/left_link[6-7]",
+    filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+    track_pose=False,
+    history_length=0,
+)
+
+RIGHT_GRIPPER_CONTACT_CFG = ContactSensorCfg(
+    prim_path="{ENV_REGEX_NS}/Robot/right_link[6-7]",
+    filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+    track_pose=False,
+    history_length=0,
+)
+
+# 접촉으로 인정할 최소 힘 크기 [N]. 스치는 접촉을 배제하기 위한 튜닝 값.
+CONTACT_FORCE_THRESHOLD: float = 0.5

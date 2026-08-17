@@ -20,6 +20,11 @@ CAMERAS = ("left_top", "left_wrist", "right_wrist")
 GRIPPER_IDX = (5, 11)
 ARM_IDX = tuple(i for i in range(12) if i not in GRIPPER_IDX)
 
+# lerobot 틱 0~4095 정규화로 직접 계산한 기대값 (구현과 독립).
+# 그리퍼: RANGE_0_100 은 1회전(360°)에 100단위 -> deg / 3.6
+_GRIPPER_PCT_AT_50DEG = 50.0 / 3.6  # 13.888...
+_GRIPPER_PCT_AT_100DEG = 100.0 / 3.6  # 27.777...
+
 EXPECTED_FEATURES = {
     "observation.state",
     "action",
@@ -38,10 +43,15 @@ EXPECTED_FEATURES = {
 def _boundary_states(num_frames: int) -> np.ndarray:
     """프레임 0/1/2 = 물리 각도 기준점 (-180°/90°/180° 팔, 0°/50°/100° 그리퍼).
 
-    JOINT_LIMITS_RAD에 의존하지 않는 독립적인 실기 기준 하드코딩 물리 각도입니다.
-    - Frame 0: 팔 -π (-180° -> -100%), 그리퍼 0 rad (0° -> 0%)
-    - Frame 1: 팔 π/2 (90° -> +50%), 그리퍼 50° (~0.8727 rad -> +50%)
-    - Frame 2: 팔 π (180° -> +100%), 그리퍼 100° (~1.7453 rad -> +100%)
+    `JOINT_LIMITS_RAD`에 의존하지 않는 독립적인 실기 기준 하드코딩 물리 각도입니다.
+    기대 백분율은 lerobot의 틱 0~4095 정규화(팔 200단위/회전, 그리퍼 100단위/회전)로
+    직접 계산한 값이며, 구현이 바뀌어도 이 표는 변하지 않습니다.
+
+    | frame | 팔 각도 | 팔 % | 그리퍼 각도 | 그리퍼 % |
+    |---|---|---|---|---|
+    | 0 | -180° | -100 | 0°  | 0     |
+    | 1 | +90°  | +50  | 50° | 13.889 |
+    | 2 | +180° | +100 | 100°| 27.778 |
     """
     states = np.zeros((num_frames, 12), dtype=np.float32)
     # Frame 0
@@ -92,8 +102,8 @@ def test_rad_to_omx_pct_boundaries():
     assert np.allclose(pct[2, ARM_IDX], 100.0), "+180°(π rad)는 팔에서 +100%"
 
     assert np.allclose(pct[0, GRIPPER_IDX], 0.0), "0 rad(0°)는 그리퍼에서 0%"
-    assert np.allclose(pct[1, GRIPPER_IDX], 50.0), "50°는 그리퍼에서 50%"
-    assert np.allclose(pct[2, GRIPPER_IDX], 100.0), "100°는 그리퍼에서 100%"
+    assert np.allclose(pct[1, GRIPPER_IDX], _GRIPPER_PCT_AT_50DEG), "50°는 그리퍼에서 13.889%"
+    assert np.allclose(pct[2, GRIPPER_IDX], _GRIPPER_PCT_AT_100DEG), "100°는 그리퍼에서 27.778%"
 
 
 def test_export_raw_to_lerobot(tmp_path: Path):
@@ -131,11 +141,11 @@ def test_export_raw_to_lerobot(tmp_path: Path):
 
     state1 = np.asarray(ds[1]["observation.state"])
     assert np.allclose(state1[list(ARM_IDX)], 50.0)
-    assert np.allclose(state1[list(GRIPPER_IDX)], 50.0)
+    assert np.allclose(state1[list(GRIPPER_IDX)], _GRIPPER_PCT_AT_50DEG)
 
     state2 = np.asarray(ds[2]["observation.state"])
     assert np.allclose(state2[list(ARM_IDX)], 100.0)
-    assert np.allclose(state2[list(GRIPPER_IDX)], 100.0)
+    assert np.allclose(state2[list(GRIPPER_IDX)], _GRIPPER_PCT_AT_100DEG)
 
 
 def test_invalid_repo_id_raises(tmp_path: Path):
