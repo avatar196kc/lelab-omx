@@ -36,21 +36,30 @@ Isaac Lab 환경과 LeLab 웹/학습 환경은 의존성 격리를 위해 서로
 
 ## 2. 사전 준비 및 USD 자산 생성
 
-### 2.1 URDF to USD 변환
+### 2.1 양팔 URDF 생성 (Bimanual Assembly)
 
-LeLab-OMX에 포함된 OMX URDF 모델을 Isaac Sim용 USD(Universal Scene Description) 포맷으로 변환합니다.
+단일 팔 URDF(`frontend/public/omx-urdf/urdf/omx_f.urdf`)로부터 작업대 간격 0.40m를 두고 좌/우 접두사가 붙은 결합 URDF 및 기계 가동범위를 생성합니다.
 
 ```bash
-# Isaac Lab 설치 디렉토리에서 실행 (또는 ISAACLAB_PATH 환경변수 사용)
+uv run python scripts/build_bimanual_urdf.py
+```
+- 생성 파일: `lelab_sim/assets/omx_bimanual.urdf`
+
+### 2.2 URDF to USD 변환
+
+생성된 양팔 URDF를 Isaac Sim용 USD(Universal Scene Description) 포맷으로 변환합니다.
+
+```bash
+# Isaac Lab 환경에서 실행
 isaaclab.sh -p scripts/tools/convert_urdf.py \
-  frontend/public/omx-urdf/urdf/omx_f.urdf \
-  lelab_sim/assets/omx.usd \
+  lelab_sim/assets/omx_bimanual.urdf \
+  lelab_sim/assets/omx_bimanual.usd \
   --merge-joints
 ```
 
 > **옵션 설명**:
 > - `--merge-joints`: 고정 조인트(fixed joint) 및 불필요한 링크를 병합하여 물리 엔진(PhysX) 연산 효율을 극대화합니다.
-> - 변환된 `omx.usd`는 `lelab_sim/envs/omx_bimanual_env_cfg.py`에서 로봇 Articulation 에셋으로 로드됩니다.
+> - 변환된 `omx_bimanual.usd`는 `lelab_sim/envs/omx_cfg.py`의 Articulation 에셋으로 자동 로드됩니다.
 
 ---
 

@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 import pytest
 
-from lelab_sim.joint_limits import JOINT_LIMITS_RAD, JOINT_ORDER, rad_to_omx_pct
+from lelab_sim.joint_limits import JOINT_ORDER, rad_to_omx_pct
 
 CAMERAS = ("left_top", "left_wrist", "right_wrist")
 GRIPPER_IDX = (5, 11)
@@ -36,18 +36,24 @@ EXPECTED_FEATURES = {
 
 
 def _boundary_states(num_frames: int) -> np.ndarray:
-    """프레임 0/1/2 = 각 관절의 q_min / 중앙 / q_max, 나머지는 중앙값.
+    """프레임 0/1/2 = 물리 각도 기준점 (-180°/90°/180° 팔, 0°/50°/100° 그리퍼).
 
-    단위 변환을 실제로 강제하기 위한 값이다. 0으로 채우면 변환 함수가
-    무엇을 반환하든 테스트가 통과해 버린다.
+    JOINT_LIMITS_RAD에 의존하지 않는 독립적인 실기 기준 하드코딩 물리 각도입니다.
+    - Frame 0: 팔 -π (-180° -> -100%), 그리퍼 0 rad (0° -> 0%)
+    - Frame 1: 팔 π/2 (90° -> +50%), 그리퍼 50° (~0.8727 rad -> +50%)
+    - Frame 2: 팔 π (180° -> +100%), 그리퍼 100° (~1.7453 rad -> +100%)
     """
-    lo = np.array([JOINT_LIMITS_RAD[j][0] for j in JOINT_ORDER], dtype=np.float32)
-    hi = np.array([JOINT_LIMITS_RAD[j][1] for j in JOINT_ORDER], dtype=np.float32)
-    mid = (lo + hi) / 2.0
-    states = np.tile(mid, (num_frames, 1)).astype(np.float32)
-    states[0] = lo
-    states[1] = mid
-    states[2] = hi
+    states = np.zeros((num_frames, 12), dtype=np.float32)
+    # Frame 0
+    states[0, ARM_IDX] = -np.pi
+    states[0, GRIPPER_IDX] = 0.0
+    # Frame 1
+    states[1, ARM_IDX] = np.pi / 2.0
+    states[1, GRIPPER_IDX] = 50.0 * np.pi / 180.0
+    # Frame 2
+    states[2, ARM_IDX] = np.pi
+    states[2, GRIPPER_IDX] = 100.0 * np.pi / 180.0
+
     return states
 
 
@@ -77,17 +83,17 @@ def _create_fake_raw_rollouts(root: Path, num_episodes: int = 2, num_frames: int
 
 
 def test_rad_to_omx_pct_boundaries():
-    """변환 함수 단독 검증 — 경계값이 정확히 매핑되는가."""
+    """변환 함수 단독 검증 — 실기 하드코딩 각도 기준 경계값이 정확히 매핑되는가."""
     states = _boundary_states(3)
     pct = rad_to_omx_pct(states)
 
-    assert np.allclose(pct[0, ARM_IDX], -100.0), "q_min은 팔에서 -100%"
-    assert np.allclose(pct[1, ARM_IDX], 0.0), "중앙은 팔에서 0%"
-    assert np.allclose(pct[2, ARM_IDX], 100.0), "q_max는 팔에서 +100%"
+    assert np.allclose(pct[0, ARM_IDX], -100.0), "-180°(-π rad)는 팔에서 -100%"
+    assert np.allclose(pct[1, ARM_IDX], 50.0), "+90°(π/2 rad)는 팔에서 +50%"
+    assert np.allclose(pct[2, ARM_IDX], 100.0), "+180°(π rad)는 팔에서 +100%"
 
-    assert np.allclose(pct[0, GRIPPER_IDX], 0.0), "q_min은 그리퍼에서 0%"
-    assert np.allclose(pct[1, GRIPPER_IDX], 50.0), "중앙은 그리퍼에서 50%"
-    assert np.allclose(pct[2, GRIPPER_IDX], 100.0), "q_max는 그리퍼에서 100%"
+    assert np.allclose(pct[0, GRIPPER_IDX], 0.0), "0 rad(0°)는 그리퍼에서 0%"
+    assert np.allclose(pct[1, GRIPPER_IDX], 50.0), "50°는 그리퍼에서 50%"
+    assert np.allclose(pct[2, GRIPPER_IDX], 100.0), "100°는 그리퍼에서 100%"
 
 
 def test_export_raw_to_lerobot(tmp_path: Path):
@@ -122,6 +128,10 @@ def test_export_raw_to_lerobot(tmp_path: Path):
     state0 = np.asarray(ds[0]["observation.state"])
     assert np.allclose(state0[list(ARM_IDX)], -100.0)
     assert np.allclose(state0[list(GRIPPER_IDX)], 0.0)
+
+    state1 = np.asarray(ds[1]["observation.state"])
+    assert np.allclose(state1[list(ARM_IDX)], 50.0)
+    assert np.allclose(state1[list(GRIPPER_IDX)], 50.0)
 
     state2 = np.asarray(ds[2]["observation.state"])
     assert np.allclose(state2[list(ARM_IDX)], 100.0)

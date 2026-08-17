@@ -7,13 +7,12 @@ URDF에 명시되지 않은 물리 물성(마찰, 관성, 솔버 반복)은 파�
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.sensors import TiledCameraCfg
-
-from lelab_sim.joint_limits import JOINT_LIMITS_RAD
 
 # -----------------------------------------------------------------------------
 # Tunable Constants (튜닝 대상 물리 및 솔버 파라미터)
@@ -21,8 +20,9 @@ from lelab_sim.joint_limits import JOINT_LIMITS_RAD
 # URDF가 제공하지 않아 손으로 설정해야 하는 값들입니다.
 # 시뮬레이션 중 물체 미끄러짐, 진동, 그리퍼 관통 현상 발생 시 아래 상수를 조정합니다.
 
-# USD 자산 경로 (환경 변수 OMX_USD_PATH 로 재정의 가능)
-OMX_USD_PATH: str = os.environ.get("OMX_USD_PATH", "lelab_sim/assets/omx.usd")
+# 기본 USD 자산 경로 (모듈 기준 절대 경로, 환경 변수 OMX_USD_PATH 로 재정의 가능)
+_DEFAULT_USD_PATH = str(Path(__file__).resolve().parents[1] / "assets" / "omx_bimanual.usd")
+OMX_USD_PATH: str = os.environ.get("OMX_USD_PATH", _DEFAULT_USD_PATH)
 
 # 그리퍼 패드 접촉 마찰계수 (물체 파지 안정성 향상)
 GRIPPER_PAD_FRICTION: float = 1.0
@@ -45,16 +45,8 @@ GRIPPER_ARMATURE: float = 0.005
 GRIPPER_EFFORT_LIMIT: float = 10.0
 GRIPPER_VELOCITY_LIMIT: float = 4.8
 
-# -----------------------------------------------------------------------------
-# 관절 한계 (Single Source of Truth: lelab_sim.joint_limits.JOINT_LIMITS_RAD)
-# -----------------------------------------------------------------------------
-# 좌/우 12개 관절의 가동 범위는 반드시 joint_limits.py의 값을 참조합니다.
-_LEFT_SHOULDER_PAN_LIMITS = JOINT_LIMITS_RAD["left_shoulder_pan"]
-_LEFT_SHOULDER_LIFT_LIMITS = JOINT_LIMITS_RAD["left_shoulder_lift"]
-_LEFT_ELBOW_FLEX_LIMITS = JOINT_LIMITS_RAD["left_elbow_flex"]
-_LEFT_WRIST_FLEX_LIMITS = JOINT_LIMITS_RAD["left_wrist_flex"]
-_LEFT_WRIST_ROLL_LIMITS = JOINT_LIMITS_RAD["left_wrist_roll"]
-_LEFT_GRIPPER_LIMITS = JOINT_LIMITS_RAD["left_gripper"]
+# 참고: 관절 가동 한계(JOINT_LIMITS_RAD)는 scripts/build_bimanual_urdf.py를 통해
+# omx_bimanual.urdf 생성 시 <limit> 태그에 직접 주입되어 USD 변환에 반영됩니다.
 
 # -----------------------------------------------------------------------------
 # Robot Articulation Configuration

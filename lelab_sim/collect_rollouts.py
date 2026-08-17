@@ -344,6 +344,9 @@ def main() -> None:
     )
     if hasattr(env_cfg, "enable_cameras"):
         env_cfg.enable_cameras = True
+        # __post_init__을 재호출하여 씬에 TiledCameraCfg가 확실히 등록되도록 함 (Y1 Fix)
+        if hasattr(env_cfg, "__post_init__"):
+            env_cfg.__post_init__()
 
     env = gym.make(args_cli.task, cfg=env_cfg)
     wrapped_env = RslRlVecEnvWrapper(env)
@@ -368,6 +371,15 @@ def main() -> None:
     robot = unwrapped_scene["robot"]
     object_asset = unwrapped_scene["object"]
 
+    # 카메라 센서 존재 여부 fail-fast 검증 (Y1)
+    for cam in CAMERAS:
+        cam_key = f"{cam}_cam"
+        if cam_key not in unwrapped_scene:
+            raise RuntimeError(
+                f"Camera sensor '{cam_key}' not found in scene. "
+                "Make sure both '--enable_cameras' CLI flag and 'env_cfg.enable_cameras = True' are active."
+            )
+
     # 관절 순서 매핑 인덱스 생성
     joint_indices = get_joint_order_indices(robot.data.joint_names, JOINT_ORDER)
 
@@ -389,10 +401,19 @@ def main() -> None:
     ]
     action_indices = get_joint_order_indices(action_joint_names, list(JOINT_ORDER))
 
-    # 양손 엔드이펙터 링크 인덱스 탐색
+    # 액션 스케일 동적 조회 (O1)
+    action_scale: float = 0.05
+    if hasattr(env_cfg, "actions") and hasattr(env_cfg.actions, "arm_action"):
+        action_scale = getattr(env_cfg.actions.arm_action, "scale", 0.05)
+
+    # 양손 엔드이펙터 링크 인덱스 탐색 (Fail-fast ValueError, O3 Fix)
     body_names = list(robot.data.body_names)
-    left_ee_idx = body_names.index("left_link5") if "left_link5" in body_names else 0
-    right_ee_idx = body_names.index("right_link5") if "right_link5" in body_names else 0
+    if "left_link5" not in body_names:
+        raise ValueError(f"Body 'left_link5' not found in robot body names: {body_names}")
+    if "right_link5" not in body_names:
+        raise ValueError(f"Body 'right_link5' not found in robot body names: {body_names}")
+    left_ee_idx = body_names.index("left_link5")
+    right_ee_idx = body_names.index("right_link5")
 
     # 환경별 에피소드 버퍼 초기화
     initial_obj_z = object_asset.data.root_pos_w[:, 2].detach().cpu().numpy()
@@ -407,6 +428,7 @@ def main() -> None:
     print(f"Environments: {args_cli.num_envs}")
     print(f"Output Directory: {out_path}")
     print(f"Lift Threshold: {args_cli.lift_height_threshold}m, Hold Steps: {args_cli.hold_steps}")
+    print(f"Max Steps Per Episode: {args_cli.max_steps_per_episode}")
     print("=" * 60)
 
     # 8. 롤아웃 수집 루프
@@ -425,12 +447,12 @@ def main() -> None:
                 cam_sensor = unwrapped_scene[f"{cam}_cam"]
                 cam_frames[cam] = cam_sensor.data.output["rgb"].detach().cpu().numpy()
 
-            # 2) 정책 추론 및 상대 델타 기반 절대 목표 관절 각도 계산 (Spec §4.2: q_target = clip(q + 0.05 * action, q_min, q_max))
+            # 2) 정책 추론 및 상대 델타 기반 절대 목표 관절 각도 계산 (Spec §4.2: q_target = clip(q + scale * action, q_min, q_max))
             actions = policy(obs)
             action_deltas = actions.detach().cpu().numpy()
             action_deltas_ordered = action_deltas[:, action_indices]
             target_joint_pos_all = np.clip(
-                joint_pos_all + 0.05 * action_deltas_ordered,
+                joint_pos_all + action_scale * action_deltas_ordered,
                 q_min_arr,
                 q_max_arr,
             )
@@ -452,7 +474,7 @@ def main() -> None:
                 right_ee_pos = ee_pos_all[env_idx, right_ee_idx, :3]
                 d_left = float(np.linalg.norm(left_ee_pos - cur_obj_pos))
                 d_right = float(np.linalg.norm(right_ee_pos - cur_obj_pos))
-                is_contact = (d_left <= 0.12) and (d_right <= 0.12)
+                is_contact = (d_left <= 0.15) and (d_right <= 0.15)
 
                 # 기계적 관절 한계 판정
                 limits_ok = bool(
@@ -472,8 +494,9 @@ def main() -> None:
                     limits_ok=limits_ok,
                 )
 
-                # 에피소드 종료 시 성공 판정 및 저장
-                if dones[env_idx]:
+                # 에피소드 종료 또는 최대 스텝 도달 시 성공 판정 및 저장 (O6 Fix)
+                is_timeout = len(env_buffers[env_idx].states) >= args_cli.max_steps_per_episode
+                if dones[env_idx] or is_timeout:
                     total_attempts += 1
                     is_success, reason = env_buffers[env_idx].evaluate_success(
                         lift_height_threshold=args_cli.lift_height_threshold,

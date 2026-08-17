@@ -5,8 +5,6 @@ ManagerBasedRLEnvCfg 기반으로 태스크의 관측, 액션, 보상, 도메인
 
 from __future__ import annotations
 
-import math
-
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg, mdp
@@ -67,10 +65,11 @@ class OmxBimanualLiftSceneCfg(InteractiveSceneCfg):
     )
 
     # 들어올릴 타겟 물체 (Box Object)
+    # 양팔 협조 파지가 필요한 크기 (폭 0.22m)
     object = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Object",
         spawn=sim_utils.CuboidCfg(
-            size=(0.08, 0.12, 0.08),
+            size=(0.12, 0.22, 0.08),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 retain_accelerations=False,
@@ -79,7 +78,7 @@ class OmxBimanualLiftSceneCfg(InteractiveSceneCfg):
                 max_linear_velocity=10.0,
                 max_angular_velocity=10.0,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.25),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.35),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.8, 0.1, 0.1)),
         ),
@@ -100,28 +99,26 @@ class OmxBimanualLiftSceneCfg(InteractiveSceneCfg):
 # -----------------------------------------------------------------------------
 @configclass
 class ActionsCfg:
-    """12차원 액션: 12개 관절의 상대 목표 위치 제어 (Relative Joint Position Action).
+    """액션 정의: 12개 관절의 상대적 위치 델타 제어 (Relative Joint Position Action).
 
-    Spec §4.2: q_target[t] = clip(q_target[t-1] + action * action_scale, q_min, q_max)
-    - 팔 관절 (좌/우 각 5개, 총 10개): scale = 0.05 rad (≈ 2.86 deg/step)
-    - 그리퍼 관절 (좌/우 각 1개, 총 2개): scale = 0.05 rad
+    Spec §4.2:
+        q_target[t] = clip(q_target[t-1] + action * action_scale, q_min, q_max)
     """
 
+    # 1. 좌/우 5자유도 팔 관절 델타 제어 (10개 관절)
     arm_action = mdp.RelativeJointPositionActionCfg(
         asset_name="robot",
-        joint_names=[
-            "left_joint[1-5]",
-            "right_joint[1-5]",
-        ],
+        joint_names=["left_joint[1-5]", "right_joint[1-5]"],
         scale=0.05,
+        use_default_offset=False,
     )
+
+    # 2. 좌/우 그리퍼 관절 델타 제어 (2개 관절)
     gripper_action = mdp.RelativeJointPositionActionCfg(
         asset_name="robot",
-        joint_names=[
-            "left_gripper_joint_1",
-            "right_gripper_joint_1",
-        ],
+        joint_names=["left_gripper_joint_1", "right_gripper_joint_1"],
         scale=0.05,
+        use_default_offset=False,
     )
 
 
@@ -130,13 +127,13 @@ class ActionsCfg:
 # -----------------------------------------------------------------------------
 @configclass
 class ObservationsCfg:
-    """관측 공간 명세: PPO 학습 전용 60차원 관측 벡터.
+    """관측 공간 (Privileged Observation for PPO Policy, 60차원).
 
-    - 관절 위치 (12) + 노이즈 sigma=0.01
-    - 관절 속도 (12) + 노이즈 sigma=0.01
-    - 양손 엔드이펙터 포즈 (14: pos 3 + quat 4 각각)
-    - 물체 포즈 (7: pos 3 + quat 4)
-    - 목표 위치 (3: x, y, z)
+    - 양팔 관절 위치 (12)
+    - 양팔 관절 속도 (12)
+    - 양손 EE 포즈 (14: Left EE 7 + Right EE 7)
+    - 타겟 물체 포즈 (7: pos 3 + quat 4)
+    - 타겟 목표 위치 (3)
     - 이전 액션 (12)
     합계: 12 + 12 + 14 + 7 + 3 + 12 = 60차원
     """
@@ -203,45 +200,45 @@ class EventCfg:
         },
     )
 
-    # 2. 물체 마찰계수 무작위화: 0.5 ~ 1.2
-    randomize_physics_material = EventTermCfg(
+    # 2. 물체 및 바닥 마찰계수 무작위화: 0.5 ~ 1.2
+    randomize_physics_materials = EventTermCfg(
         func=mdp.randomize_rigid_body_material,
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("object"),
             "static_friction_range": (0.5, 1.2),
             "dynamic_friction_range": (0.5, 1.2),
-            "restitution_range": (0.0, 0.0),
+            "restitution_range": (0.0, 0.1),
             "num_buckets": 64,
         },
     )
 
-    # 3. 로봇 관절 초기 위치 리셋 (약간의 노이즈 추가)
-    reset_robot_joints = EventTermCfg(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
+    # 3. 로봇 링크 질량 무작위화: ±10%
+    randomize_robot_mass = EventTermCfg(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "position_range": (-0.05, 0.05),
-            "velocity_range": (0.0, 0.0),
+            "mass_distribution_params": (0.9, 1.1),
+            "operation": "scale",
         },
     )
 
-    # 4. 물체 초기 위치 리셋 (작업대 위 x, y ±0.05m 오프셋)
+    # 4. 에피소드 리셋 시 물체 초기 위치 무작위화 (x: 0.30~0.40m, y: -0.05~0.05m)
     reset_object_position = EventTermCfg(
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("object"),
             "pose_range": {
                 "x": (-0.05, 0.05),
                 "y": (-0.05, 0.05),
                 "z": (0.0, 0.0),
                 "roll": (0.0, 0.0),
                 "pitch": (0.0, 0.0),
-                "yaw": (-math.pi / 4, math.pi / 4),
+                "yaw": (-0.2, 0.2),
             },
             "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("object"),
         },
     )
 
@@ -253,18 +250,17 @@ class EventCfg:
 class RewardsCfg:
     """보상 함수 명세.
 
-    - reach (+1.0): 양 그리퍼와 물체 간 거리 최소화
-    - grasp (+2.0): 물체 파지 / 양손 근접 접촉
-    - lift (+5.0): 물체 들어올리기 높이 상승
-    - action_rate (-0.01): 급격한 액션 변화 억제 패널티
+    1. reaching_object: 양 그리퍼와 물체 간 거리 최소화 (가중치 1.0)
+    2. object_grasp: 양 그리퍼와 물체 간 동시 접촉 및 파지 (가중치 2.0)
+    3. lifting_object: 물체를 목표 높이까지 들어올림 (가중치 5.0)
+    4. action_rate: 급격한 액션 변화 패널티 (가중치 -0.01)
     """
 
-    # 1. 도달 보상: 그리퍼들과 물체 중심 사이 거리 최소화
+    # 1. 도달 보상: 양손과 물체 간 거리 최소화
     reaching_object = RewardTermCfg(
         func=mdp.object_ee_distance,
         weight=1.0,
         params={
-            "std": 0.1,
             "object_cfg": SceneEntityCfg("object"),
             "ee_cfg": SceneEntityCfg("robot", body_names=["left_link5", "right_link5"]),
         },
@@ -280,12 +276,12 @@ class RewardsCfg:
         },
     )
 
-    # 3. 리프트 보상: 물체 높이 상승
+    # 3. 리프트 보상: 물체 높이 상승 (물체 초기 중심 0.45m 대비 0.55m 이상부터 보상)
     lifting_object = RewardTermCfg(
         func=mdp.object_lift_height,
         weight=5.0,
         params={
-            "minimal_height": 0.45,
+            "minimal_height": 0.55,
             "target_height": 0.60,
             "object_cfg": SceneEntityCfg("object"),
         },
@@ -353,8 +349,8 @@ class CommandsCfg:
 class OmxBimanualLiftEnvCfg(ManagerBasedRLEnvCfg):
     """Robotis OMX 양팔 물체 들어올리기(Bimanual Lift) RL 환경 설정."""
 
-    # 씬 구성
-    scene: OmxBimanualLiftSceneCfg = OmxBimanualLiftSceneCfg(num_envs=4096, env_spacing=2.5)
+    # 씬 구성 (기본 1024개 병렬 환경)
+    scene: OmxBimanualLiftSceneCfg = OmxBimanualLiftSceneCfg(num_envs=1024, env_spacing=2.5)
 
     # MDP 구성
     observations: ObservationsCfg = ObservationsCfg()
@@ -364,10 +360,13 @@ class OmxBimanualLiftEnvCfg(ManagerBasedRLEnvCfg):
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
 
-    # 시뮬레이션 설정 (120 Hz 물리, decimation=4 -> 30 Hz 제어)
+    # 제어 decimation (물리 120 Hz / decimation 4 = 30 Hz 제어)
+    decimation: int = 4
+
+    # 시뮬레이션 설정
     sim: SimulationCfg = SimulationCfg(
         dt=1.0 / 120.0,
-        decimation=4,
+        render_interval=4,
         physx=sim_utils.PhysxCfg(
             bounce_threshold_velocity=0.2,
             gpu_max_rigid_contact_count=2**21,
@@ -382,8 +381,12 @@ class OmxBimanualLiftEnvCfg(ManagerBasedRLEnvCfg):
     enable_cameras: bool = False
 
     def __post_init__(self):
-        """후처리: 카메라 활성화 플래그에 따라 씬 카메라 설정 적용."""
+        """후처리: 카메라 활성화 플래그에 따라 씬 카메라 설정 적용 및 제어 스텝 검증."""
         super().__post_init__()
+
+        # 제어 주파수 및 에피소드 스텝 정합성 고정 (10s / (1/120 * 4) == 300)
+        expected_steps = int(self.episode_length_s / (self.sim.dt * self.decimation))
+        assert expected_steps == 300, f"Expected 300 steps per episode, got {expected_steps}"
 
         if self.enable_cameras:
             self.scene.left_top_cam = LEFT_TOP_CAMERA_CFG

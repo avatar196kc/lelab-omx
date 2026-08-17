@@ -3,10 +3,16 @@
 ROBOTIS OMX 하드웨어 공식 사양 (https://ai.robotis.com/omx/hardware_omx.html)
 및 lerobot.robots.omx_follower (RANGE_M100_100, RANGE_0_100) 기준.
 
+lerobot 정규화 표준:
+- 팔 5관절 (RANGE_M100_100): 엔코더 틱 0~4095가 [-100, +100]%에 매핑되므로, ±100% = ±180° = ±π rad.
+- 그리퍼 (RANGE_0_100): [0, +100]%.
+
 주의: 이 모듈은 Isaac Sim 및 PyTorch를 일체 import하지 않으며 numpy만 사용합니다.
 """
 
 from __future__ import annotations
+
+import math
 
 import numpy as np
 
@@ -25,7 +31,8 @@ JOINT_ORDER: list[str] = [
     "right_gripper",
 ]
 
-# (q_min, q_max) in radians
+# 시뮬레이션 환경의 기계적 가동범위 (q_min, q_max) in radians.
+# 도달 불가능한 자세 차단 및 롤아웃 성공 판정 한계 체크에 사용됩니다.
 JOINT_LIMITS_RAD: dict[str, tuple[float, float]] = {
     "left_shoulder_pan": (-4.712, 6.283),
     "left_shoulder_lift": (-2.094, 1.571),
@@ -41,17 +48,16 @@ JOINT_LIMITS_RAD: dict[str, tuple[float, float]] = {
     "right_gripper": (0.0, 1.745),
 }
 
-_Q_MIN = np.array([JOINT_LIMITS_RAD[j][0] for j in JOINT_ORDER], dtype=np.float32)
-_Q_MAX = np.array([JOINT_LIMITS_RAD[j][1] for j in JOINT_ORDER], dtype=np.float32)
 _GRIPPER_INDICES = (5, 11)
 _ARM_INDICES = tuple(i for i in range(12) if i not in _GRIPPER_INDICES)
+_GRIPPER_MAX_RAD = 100.0 * math.pi / 180.0  # 100 degrees in radians (1.745 rad)
 
 
 def rad_to_omx_pct(q_rad: np.ndarray) -> np.ndarray:
-    """12개 관절의 라디안 각도를 OMX 정규화 백분율로 선형 변환합니다.
+    """12개 관절의 라디안 각도를 lerobot OMX 정규화 백분율로 선형 변환합니다.
 
-    - 팔 5관절 (좌/우 각 5개): [-100.0, 100.0]
-    - 그리퍼 관절 (인덱스 5, 11): [0.0, 100.0]
+    - 팔 5관절 (좌/우 각 5개): ±π rad (±180°) -> [-100.0, 100.0]
+    - 그리퍼 관절 (인덱스 5, 11): 0 ~ 1.745 rad (0 ~ 100°) -> [0.0, 100.0]
 
     Args:
         q_rad: Shape [..., 12] 라디안 각도 배열.
@@ -63,16 +69,15 @@ def rad_to_omx_pct(q_rad: np.ndarray) -> np.ndarray:
     if arr.shape[-1] != 12:
         raise ValueError(f"Expected last dimension to be 12, got shape {arr.shape}")
 
-    # 선형 재조정: (q - q_min) / (q_max - q_min)
-    norm = (arr - _Q_MIN) / (_Q_MAX - _Q_MIN)
+    out = np.empty_like(arr)
 
-    # 팔 관절: 200 * norm - 100
-    out = np.empty_like(norm)
-    out[..., _ARM_INDICES] = 200.0 * norm[..., _ARM_INDICES] - 100.0
+    # 팔 관절: ±π rad = ±180° = ±100% (q_rad * 100 / π)
+    out[..., _ARM_INDICES] = arr[..., _ARM_INDICES] * (100.0 / math.pi)
     out[..., _ARM_INDICES] = np.clip(out[..., _ARM_INDICES], -100.0, 100.0)
 
-    # 그리퍼 관절: 100 * norm
-    out[..., _GRIPPER_INDICES] = 100.0 * norm[..., _GRIPPER_INDICES]
+    # 그리퍼 관절: 0 ~ 100° (0 ~ 1.745 rad) -> [0, 100]%
+    # TODO: 실기 OMX 하드웨어 또는 lerobot 엔코더 틱 원점(완전 닫힘 틱)과 대조 확인 필요
+    out[..., _GRIPPER_INDICES] = arr[..., _GRIPPER_INDICES] * (100.0 / _GRIPPER_MAX_RAD)
     out[..., _GRIPPER_INDICES] = np.clip(out[..., _GRIPPER_INDICES], 0.0, 100.0)
 
     return out
