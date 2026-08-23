@@ -63,6 +63,11 @@ uv run lelab --dev
 - **3D 프린트 부품**: 8종 · 총 14개 —
   [하드웨어 매뉴얼](docs/hardware-manual.pdf) 및 [`hardware/stl/`](hardware/stl/) 참고
 
+<p align="center">
+  <img src="images/hardware-assembly-render.png" width="170" alt="3D 프린트 부품 조립도"><br>
+  <sub>조립된 카메라 마운트 프레임</sub>
+</p>
+
 ## 아키텍처
 
 ```

@@ -63,6 +63,11 @@ The whole loop runs in the browser. Each step below maps to a screen in the app.
 - **3D printed parts**: 8 designs, 14 pieces total — see the
   [hardware manual](docs/hardware-manual.pdf) and [`hardware/stl/`](hardware/stl/)
 
+<p align="center">
+  <img src="images/hardware-assembly-render.png" width="170" alt="Assembled 3D printed frame"><br>
+  <sub>Assembled camera mount frame</sub>
+</p>
+
 ## Architecture
 
 ```
