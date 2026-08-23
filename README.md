@@ -18,9 +18,9 @@
 arms**. Calibrate, teleoperate, record, train, replay, and run inference on a
 dual-arm setup from a web UI — without writing code.
 
-| Teleoperated data collection | Autonomous rollout | Episode review |
-|---|---|---|
-| ![](images/demo-teleop.gif) | ![](images/demo-autonomous.gif) | ![](images/demo-review.gif) |
+| Teleoperated data collection | Autonomous rollout              | Episode review              |
+| ---------------------------- | ------------------------------- | --------------------------- |
+| ![](images/demo-teleop.gif)  | ![](images/demo-autonomous.gif) | ![](images/demo-review.gif) |
 
 ---
 
@@ -44,16 +44,16 @@ Backend runs on port `8000`; the Vite dev server on `8080`.
 
 The whole loop runs in the browser. Each step below maps to a screen in the app.
 
-| # | Step | What you do |
-|---|---|---|
-| 1 | **Robot setup** | Mount leader and follower arms ([hardware manual](docs/hardware-manual.pdf)) |
-| 2 | **Serial ports** | Assign leader/follower ports per arm |
-| 3 | **Cameras** | Assign left / right / overhead cameras |
-| 4 | **Episode config** | Set task name, episode count, duration |
-| 5 | **Teleoperated collection** | Move the leader arms; follower mirrors and records |
-| 6 | **Episode review** | Replay episodes in 3D, flag and reject bad takes |
-| 7 | **Training** | Launch imitation learning on the recorded dataset |
-| 8 | **Inference** | Run the trained policy on the real arms |
+| #   | Step                        | What you do                                                                  |
+| --- | --------------------------- | ---------------------------------------------------------------------------- |
+| 1   | **Robot setup**             | Mount leader and follower arms ([hardware manual](docs/hardware-manual.pdf)) |
+| 2   | **Serial ports**            | Assign leader/follower ports per arm                                         |
+| 3   | **Cameras**                 | Assign left / right / overhead cameras                                       |
+| 4   | **Episode config**          | Set task name, episode count, duration                                       |
+| 5   | **Teleoperated collection** | Move the leader arms; follower mirrors and records                           |
+| 6   | **Episode review**          | Replay episodes in 3D, flag and reject bad takes                             |
+| 7   | **Training**                | Launch imitation learning on the recorded dataset                            |
+| 8   | **Inference**               | Run the trained policy on the real arms                                      |
 
 ## Hardware
 
@@ -94,13 +94,13 @@ into the LeRobot training and inference stack.
 
 ## Team — 로봇팔랩
 
-| Member | Contributions |
-|---|---|
+| Member                                                      | Contributions                                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | **채병기** ([@avatar196kc](https://github.com/avatar196kc)) | Project lead · dataset collection · 3D printing · hardware assembly and testing |
-| **서지현** ([@Luneberry](https://github.com/Luneberry)) | Dataset collection · license compliance · base migration |
-| **김주형** ([@runefor](https://github.com/runefor)) | Isaac Lab pipeline · reinforcement learning · code review |
-| **이상직** | 3D printing · hardware assembly and testing · dataset collection |
-| **전지현** | Dataset collection · project documentation and theory |
+| **서지현** ([@Luneberry](https://github.com/Luneberry))     | Dataset collection · license compliance · base migration                        |
+| **김주형** ([@runefor](https://github.com/runefor))         | Isaac Lab pipeline · reinforcement learning · code review                       |
+| **이상직**                                                  | 3D printing · hardware assembly and testing · dataset collection                |
+| **전지현**                                                  | Dataset collection · project documentation and theory                           |
 
 ## Technical references
 

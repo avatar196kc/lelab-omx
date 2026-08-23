@@ -105,6 +105,9 @@ files.extend-exclude = [
     "frontend/.gitattributes",
 ]
 
+# ROBOTIS is a company name (maker of the OMX arms), not a misspelling of "robotics".
+default.extend-words = { Robotis = "Robotis", ROBOTIS = "ROBOTIS" }
+
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B101", "B110", "B112", "B311", "B404", "B603", "B607", "B615"]
